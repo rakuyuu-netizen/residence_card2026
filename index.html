@@ -33,6 +33,16 @@
             <!-- 上部のアクセントカラー帯 -->
             <div class="absolute top-0 left-0 w-full h-1.5 bg-slate-600"></div>
             
+            <!-- API設定ボタン (右上) -->
+            <div class="absolute top-4 right-4 sm:top-5 sm:right-5">
+                <button onclick="openApiConfigModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-200" title="API設定">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+
             <h1 class="text-2xl font-bold text-slate-800 flex items-center justify-center gap-2 mt-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -163,8 +173,26 @@
         </div>
     </div>
 
+    <!-- APIキー設定モーダル -->
+    <div id="apiConfigModal" class="fixed inset-0 bg-slate-900/40 hidden flex justify-center items-center z-50 backdrop-blur-sm transition-opacity opacity-0 duration-200">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-11/12 max-w-md transform scale-95 transition-transform duration-200" id="apiConfigModalContent">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Gemini APIキーの設定</h3>
+            <p class="text-sm text-slate-600 mb-4 leading-relaxed">このツールを使用するには、Google AI Studioで取得したAPIキーが必要です。<br>※入力したキーはご使用のブラウザ内（ローカル）にのみ保存され、外部に送信されることはありません。</p>
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 mb-6 font-mono">
+            <div class="flex justify-end gap-3">
+                <button onclick="closeApiConfigModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">キャンセル</button>
+                <button onclick="saveApiKey()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-sm">保存する</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const apiKey = ""; // APIキーは実行環境から提供されます
+        // APIキー取得用関数（localStorageから取得）
+        function getApiKey() {
+            // この環境内でのプレビュー用フォールバック（GitHub等ではローカルストレージが使われます）
+            const envKey = typeof apiKey !== 'undefined' ? apiKey : ""; 
+            return localStorage.getItem('gemini_api_key') || envKey;
+        }
 
         // 日付文字列から年・月・日を抽出する関数
         function extractDateParts(dateStr) {
@@ -250,6 +278,15 @@
         setupDropZone(dropZoneBack, fileBack, fileNameBack, '変更がある場合のみ追加');
 
         extractBtn.addEventListener('click', async () => {
+            const currentApiKey = getApiKey();
+            
+            if (!currentApiKey) {
+                // APIキーが設定されていない場合は設定モーダルを開く
+                openApiConfigModal();
+                showNotification('APIキーを設定してください', true);
+                return;
+            }
+
             if (!fileFront.files || fileFront.files.length === 0) {
                 showNotification('表面の画像を選択してください', true);
                 return;
@@ -310,7 +347,8 @@
                     }
                 };
 
-                const data = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                // 一般公開されているモデル (gemini-2.5-flash) を使用するように変更
+                const data = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -467,6 +505,40 @@
             setTimeout(() => {
                 modal.classList.add('hidden');
             }, 200);
+        }
+
+        // --- API設定処理（カスタムモーダル） ---
+        function openApiConfigModal() {
+            const modal = document.getElementById('apiConfigModal');
+            const content = document.getElementById('apiConfigModalContent');
+            document.getElementById('apiKeyInput').value = getApiKey();
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            });
+        }
+
+        function closeApiConfigModal() {
+            const modal = document.getElementById('apiConfigModal');
+            const content = document.getElementById('apiConfigModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                showNotification('APIキーを保存しました');
+            } else {
+                localStorage.removeItem('gemini_api_key');
+                showNotification('APIキーを削除しました');
+            }
+            closeApiConfigModal();
         }
 
         function executeClear() {
