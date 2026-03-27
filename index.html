@@ -194,25 +194,8 @@
             return dateStr;
         }
 
-        // 現在表示されているデータを保持するオブジェクト
-        let currentData = {
-            name: '',
-            cardNumber: '',
-            nationality: '',
-            gender: '',
-            birthDate: '',
-            birthYear: '',
-            birthMonth: '',
-            birthDay: '',
-            address: '',
-            status: '',
-            workRestriction: '',
-            periodOfStay: '',
-            expiryDate: '',
-            permitType: '',
-            permitDate: '',
-            issueDate: ''
-        };
+        // 現在表示されているデータを保持するオブジェクト（初期状態は空にする）
+        let currentData = null;
 
         // ページ読み込み時に初期データを画面に反映
         document.addEventListener('DOMContentLoaded', () => {
